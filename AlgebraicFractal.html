@@ -1,0 +1,214 @@
+<!doctype html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta http-equiv="Cache-Control" content="no-cache"/>
+    <title>Algebraic fractal</title>
+    <script>
+	
+	var l=-2;
+	var t=2;
+	var r=2;
+	var b=-2;
+	
+	function create() {
+		var canvas = document.getElementById("canvas");
+		canvas.onmouseup = toScale;
+		buildFractal(l, t, r ,b);
+     }
+
+	function buildFractal(left,top,right,bottom) {
+		var canvas = document.getElementById("canvas");
+		var canvasWidth = parseInt(canvas.getAttribute("width"));
+		var canvasHeight = parseInt(canvas.getAttribute("height"));
+		var context = canvas.getContext('2d');
+		
+		var n = document.getElementById("count");
+		var f = document.getElementById("fractal");
+		
+		var imageData = context.createImageData(canvasWidth, canvasHeight);
+		for (var i = 0; i < canvasWidth; ++i) {
+			for (var j = 0; j < canvasHeight; ++j) {
+				var x = i*(right - left)/(canvasWidth - 1) + left;
+				var y = j*(bottom - top)/(canvasHeight - 1) + top;				
+				switch (f.value) {
+					case "newton":
+						var attractor = pointInAttractor(x, y, n.value, 1);
+						var fractal = paintNewton(attractor);
+						break;
+					case "julia":
+						var it = countIt(x, y, n.value);
+						var fractal = paintJulia(it);
+						break;
+				} 			
+				imageData.data[4*(i + canvasWidth * j) + 0] = fractal[0];
+				imageData.data[4*(i + canvasWidth * j) + 1] = fractal[1];
+				imageData.data[4*(i + canvasWidth * j) + 2] = fractal[2];
+				imageData.data[4*(i + canvasWidth * j) + 3] = fractal[3];
+			}
+		}
+		context.putImageData(imageData, 0, 0);
+	}
+	
+	function pointInAttractor(x,y,n,it) {
+		var cos = Math.cos(Math.PI / 3);
+		var sin = Math.sin(Math.PI / 3);
+		
+		if (n == 0) return [0, 0];
+		
+		if (testLocality(x, y, 1, 0))
+			return [1, it];
+ 
+		if (testLocality(x, y, -cos, sin))
+			return [2, it];
+ 
+		if (testLocality(x, y, -cos, -sin))
+			return [3, it];
+		
+		var xx = (2/3)*x + (x*x-y*y)/(3*Math.pow((x*x + y*y),2));
+		var yy = (2/3)*y*(1 - x/Math.pow((x*x + y*y),2));
+		
+		return pointInAttractor(xx, yy, n-1, it+1);
+	}
+ 
+	function testLocality(x, y, a, b) {
+		return Math.abs(x - a) <= 0.0001 && Math.abs(y - b) <= 0.0001;
+	}
+	
+	function paintNewton(attractor){
+		var coloring = document.getElementById("coloring");
+		switch (coloring.value) {
+		case "classic":
+			var fractal = classic(attractor[0]);
+			break;
+		case "levels":
+			var fractal = levels(attractor[1]);
+			break;
+		case "zebra":
+			var fractal = zebra(attractor[1]);
+			break;
+		}
+		return fractal;
+		
+	}
+	
+	function countIt(x, y, n) {
+		var it = 0;
+		while (it < n) {
+			var x1 = x*x - y*y - 0.12;
+			var y1 = 2*x*y + 0.74;
+			if (x1*x1 + y1*y1 > 4)
+				return it;
+			else{
+				x = x1;
+				y = y1;
+				it++;
+			}	
+		}
+		return 0;
+	}
+	
+	function paintJulia(it){
+		var coloring = document.getElementById("coloring");
+		var fractal;
+		switch (coloring.value) {
+			case "classic":
+				fractal = classicJulia(it);
+				break;
+            case "levels":
+                fractal = levels(it);
+                break;
+            case "zebra":
+                fractal = zebra(it);
+                break;
+        } 
+		return fractal;
+	}
+	
+	function classic(attractor) {
+		if(attractor == 1) 
+			var blue = 255;
+		
+		if(attractor == 2)
+			var red = 255;
+			
+		if(attractor == 3)
+			var green = 255;
+		
+		return [blue, red, green, 255];	
+	}
+		
+	function levels(n) {
+		var brightness = n !=0 ? 255/(n - 1) : 0;
+		return [0, 0, 0, brightness];
+	}
+	  
+	function zebra(n) { 
+		if(n%2 == 0) 
+			return [0, 0, 0, 255];
+		return [255, 255, 255, 255];
+		
+	}
+	
+	function classicJulia(n) {
+		if(n== 0)
+			return [0, 0, 0, 255];		
+		return [255, 255, 255, 255];
+	}
+	 
+	function toScale(e){
+		var canvasWidth = parseInt(canvas.getAttribute("width"));
+		var canvasHeight = parseInt(canvas.getAttribute("height"));
+		var scaling = document.getElementById("scaling"); 
+		var x=e.pageX;
+		var y=e.pageY;     
+		if (scaling.value == "approxim") {
+			var x1 = canvasWidth/3;
+			var y1 = canvasHeight/3;
+		} 
+		if (scaling.value == "decrease") {
+			var x1 = canvasWidth*3;
+			var y1 = canvasHeight*3;
+		}
+
+		var left = x - x1;
+		var top = y - y1;
+		var right = x + x1
+		var bottom = y + y1;
+		
+		var newleft = left*(r - l)/(canvasWidth - 1) + l;
+		var newtop = top*(b - t)/(canvasHeight - 1) + t;
+		var newright = right*(r - l)/(canvasWidth - 1) + l;
+		var newbottom = bottom*(b - t)/(canvasHeight - 1) + t;	
+		buildFractal(newleft, newtop, newright, newbottom);
+		l = newleft;
+		t = newtop;
+		r = newright;
+		b = newbottom;
+	}
+
+ </script>
+	<body>
+	<body style="background:#80BFFF">
+             <canvas height="400" width="400" id="canvas"></canvas>
+			 <br>вид фрактала:</br>
+			<select size="2" id="fractal">
+                 <option value="newton">бассейн Ньютона</option>
+                 <option value="julia">множество Жюлиа</option>
+			</select>
+			<br>количество итераций:</br>
+			<input id="count" rows="1" size="3"></input>
+			<br>тип раскраски:</br>
+             <select size="3" id="coloring">
+                 <option value="classic">классическая</option>
+                 <option value="levels">уровни</option>
+                 <option value="zebra">зебра</option>
+			</select></br></br>
+			<select size="2" id="scaling">
+				<option value="approxim">приближение</option>
+				<option value="decrease">уменьшение</option>
+			</select></br>
+             <input type="button" onclick="create()" value="построить"></br>
+ 
+	</body>
+ </html>
